@@ -1,49 +1,35 @@
-import { useState, useEffect } from 'react'
-import { Log, initLogger } from 'logger-middleware'
-import './App.css'
-
-// Initialize the logger for frontend usage
-initLogger({ token: 'frontend-token-456' });
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { AppBar, Toolbar, Typography, Button, Container, Box } from '@mui/material';
+import AllNotifications from './pages/AllNotifications';
+import PriorityInbox from './pages/PriorityInbox';
 
 function App() {
-  const [count, setCount] = useState(0)
-
-  useEffect(() => {
-    Log('frontend', 'info', 'component', 'App component mounted');
-  }, []);
-
-  const handleClick = () => {
-    setCount((count) => count + 1);
-    Log('frontend', 'debug', 'state', `Count updated to ${count + 1}`);
-  };
-
-  const simulateApiCall = async () => {
-    Log('frontend', 'info', 'api', 'Starting simulated API call');
-    try {
-      // Simulate network request
-      await new Promise(resolve => setTimeout(resolve, 500));
-      throw new Error("Simulated network failure");
-    } catch (err: any) {
-      Log('frontend', 'error', 'api', `API call failed: ${err.message}`);
-    }
-  };
-
   return (
-    <div className="App">
-      <h1>Logging Middleware Demo</h1>
-      <div className="card">
-        <button onClick={handleClick}>
-          count is {count}
-        </button>
-        <button onClick={simulateApiCall} style={{ marginLeft: '10px' }}>
-          Simulate API Error
-        </button>
-      </div>
-      <p className="read-the-docs">
-        Check the console and the backend test server for log events.
-      </p>
-    </div>
-  )
+    <Router>
+      <Box sx={{ flexGrow: 1 }}>
+        <AppBar position="static">
+          <Toolbar>
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+              Campus Notifications
+            </Typography>
+            <Button color="inherit" component={Link} to="/priority">
+              Priority Inbox
+            </Button>
+            <Button color="inherit" component={Link} to="/">
+              All Notifications
+            </Button>
+          </Toolbar>
+        </AppBar>
+      </Box>
+
+      <Container sx={{ mt: 4 }}>
+        <Routes>
+          <Route path="/" element={<AllNotifications />} />
+          <Route path="/priority" element={<PriorityInbox />} />
+        </Routes>
+      </Container>
+    </Router>
+  );
 }
 
-export default App
+export default App;
