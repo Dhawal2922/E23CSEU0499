@@ -1,0 +1,14 @@
+{
+  "name": "logger-middleware",
+  "version": "1.0.0",
+  "description": "A reusable logging middleware package",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
