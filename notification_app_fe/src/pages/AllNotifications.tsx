@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Card, CardContent, Chip, Box, Badge, FormControl, InputLabel, Select, MenuItem, Button } from '@mui/material';
+import { Box, Typography, Avatar, FormControl, Select, MenuItem, Button } from '@mui/material';
 import { type Notification, fetchNotificationsAPI } from '../services/api';
 import { useReadStatus } from '../hooks/useReadStatus';
 import { Log } from 'logger-middleware';
@@ -20,27 +20,32 @@ export default function AllNotifications() {
     setNotifications(data);
   };
 
-  const getChipColor = (type: string) => {
+  const getAvatarProps = (type: string) => {
     switch (type) {
-      case 'Placement': return 'success';
-      case 'Result': return 'primary';
-      case 'Event': return 'secondary';
-      default: return 'default';
+      case 'Placement': return { sx: { bgcolor: '#1b5e20' }, children: 'P' };
+      case 'Result': return { sx: { bgcolor: '#0d47a1' }, children: 'R' };
+      case 'Event': return { sx: { bgcolor: '#e65100' }, children: 'E' };
+      default: return { sx: { bgcolor: '#424242' }, children: 'N' };
     }
   };
 
   return (
-    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">All Notifications</Typography>
-        <FormControl size="small" sx={{ minWidth: 150 }}>
-          <InputLabel>Filter Type</InputLabel>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Channel Header */}
+      <Box sx={{ p: 2, borderBottom: '1px solid #e2e2e2', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="h6" sx={{ fontWeight: 'bold' }}># all-notifications</Typography>
+        
+        <FormControl size="small" sx={{ minWidth: 120 }}>
           <Select
             value={filter}
-            label="Filter Type"
-            onChange={(e) => setFilter(e.target.value as string)}
+            displayEmpty
+            onChange={(e) => {
+              setFilter(e.target.value as string);
+              setPage(1);
+            }}
+            sx={{ borderRadius: 2, fontSize: 14, bgcolor: '#f8f8f8' }}
           >
-            <MenuItem value=""><em>All</em></MenuItem>
+            <MenuItem value=""><em>Filter: All</em></MenuItem>
             <MenuItem value="Placement">Placement</MenuItem>
             <MenuItem value="Result">Result</MenuItem>
             <MenuItem value="Event">Event</MenuItem>
@@ -48,50 +53,56 @@ export default function AllNotifications() {
         </FormControl>
       </Box>
 
-      {notifications.map((notif) => {
-        const isNew = !readIds.has(notif.ID);
-        return (
-          <Badge 
-            key={notif.ID} 
-            color="error" 
-            variant="dot" 
-            invisible={!isNew}
-            sx={{ width: '100%', mb: 2, display: 'block' }}
-          >
-            <Card 
-              variant="outlined" 
-              onClick={() => markAsRead(notif.ID)}
-              sx={{ 
-                cursor: 'pointer',
-                bgcolor: isNew ? '#f8faff' : 'background.paper',
-                borderLeft: isNew ? '4px solid #1976d2' : '1px solid #e0e0e0',
-                transition: 'background-color 0.2s'
-              }}
-            >
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="h6" sx={{ fontWeight: isNew ? 'bold' : 'normal' }}>
+      {/* Messages Area */}
+      <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 0, pb: 4 }}>
+        {notifications.length === 0 ? (
+          <Typography color="text.secondary" sx={{ p: 3, textAlign: 'center' }}>No notifications found.</Typography>
+        ) : (
+          notifications.map((notif) => {
+            const isNew = !readIds.has(notif.ID);
+            
+            return (
+              <Box 
+                key={notif.ID}
+                onClick={() => markAsRead(notif.ID)}
+                sx={{ 
+                  display: 'flex', 
+                  py: 1.5, 
+                  px: 3,
+                  cursor: 'pointer',
+                  bgcolor: isNew ? 'rgba(29, 155, 209, 0.08)' : 'transparent',
+                  '&:hover': { bgcolor: isNew ? 'rgba(29, 155, 209, 0.12)' : '#f8f8f8' }
+                }}
+              >
+                <Avatar {...getAvatarProps(notif.Type)} variant="rounded" sx={{ width: 36, height: 36, mt: 0.5, ...getAvatarProps(notif.Type).sx }} />
+                <Box sx={{ ml: 2, flexGrow: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'baseline' }}>
+                    <Typography sx={{ fontWeight: 'bold', fontSize: 15, mr: 1, color: '#1d1c1d' }}>
+                      {notif.Type} Bot
+                    </Typography>
+                    <Typography sx={{ fontSize: 12, color: '#616061' }}>
+                      {new Date(notif.Timestamp.replace(' ', 'T')).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    </Typography>
+                  </Box>
+                  <Typography sx={{ fontSize: 15, color: '#1d1c1d', fontWeight: isNew ? 600 : 400, mt: 0.3 }}>
                     {notif.Message}
                   </Typography>
-                  <Chip size="small" label={notif.Type} color={getChipColor(notif.Type) as any} />
                 </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                  {new Date(notif.Timestamp.replace(' ', 'T')).toLocaleString()}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Badge>
-        );
-      })}
-
-      <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 3 }}>
-        <Button variant="outlined" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
-          Previous Page
-        </Button>
-        <Button variant="outlined" onClick={() => setPage(p => p + 1)}>
-          Next Page
-        </Button>
+              </Box>
+            );
+          })
+        )}
+        
+        {/* Pagination Controls */}
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 4 }}>
+          <Button variant="outlined" disabled={page === 1} onClick={() => setPage(p => p - 1)}>
+            Older
+          </Button>
+          <Button variant="outlined" onClick={() => setPage(p => p + 1)}>
+            Newer
+          </Button>
+        </Box>
       </Box>
-    </Container>
+    </Box>
   );
 }

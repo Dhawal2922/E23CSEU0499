@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Container, Typography, Card, CardContent, Chip, Box, Badge, Slider } from '@mui/material';
+import { Box, Typography, Avatar, Slider } from '@mui/material';
 import { type Notification, fetchNotificationsAPI } from '../services/api';
 import { useReadStatus } from '../hooks/useReadStatus';
 import { Log } from 'logger-middleware';
@@ -15,15 +15,9 @@ export default function PriorityInbox() {
   }, [limit]);
 
   const loadPriorityData = async () => {
-    // Priority logic mandates fetching all/many then sorting.
-    // In a real app, backend would do this. The prompt states backend doesn't, so we sort locally for UI.
     const allNotifs = await fetchNotificationsAPI(1, 100); 
-
     const weights: Record<string, number> = { 'Placement': 3, 'Result': 2, 'Event': 1 };
     
-    // Filter unread implicitly? "displays the top 'n' most important unread notifications first"
-    // Prompt: "always displays the top 'n' most important unread notifications first"
-    // Let's filter out read notifications first!
     const unread = allNotifs.filter(n => !readIds.has(n.ID));
 
     const sorted = unread.sort((a, b) => {
@@ -39,78 +33,83 @@ export default function PriorityInbox() {
     setPriorityNotifications(sorted.slice(0, limit));
   };
 
-  const getChipColor = (type: string) => {
+  const getAvatarProps = (type: string) => {
     switch (type) {
-      case 'Placement': return 'success';
-      case 'Result': return 'primary';
-      case 'Event': return 'secondary';
-      default: return 'default';
+      case 'Placement': return { sx: { bgcolor: '#1b5e20' }, children: 'P' };
+      case 'Result': return { sx: { bgcolor: '#0d47a1' }, children: 'R' };
+      case 'Event': return { sx: { bgcolor: '#e65100' }, children: 'E' };
+      default: return { sx: { bgcolor: '#424242' }, children: 'N' };
     }
   };
 
   return (
-    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" sx={{ mb: 1 }}>Priority Inbox 🌟</Typography>
-      <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
-        Showing the top {limit} most important UNREAD notifications.
-      </Typography>
-
-      <Box sx={{ px: 2, mb: 4 }}>
-        <Typography id="limit-slider" gutterBottom>
-          Number of notifications to show:
-        </Typography>
-        <Slider
-          value={limit}
-          onChange={(_, val) => setLimit(val as number)}
-          step={5}
-          marks
-          min={5}
-          max={20}
-          valueLabelDisplay="auto"
-        />
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Channel Header */}
+      <Box sx={{ p: 2, borderBottom: '1px solid #e2e2e2', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Box>
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}># priority-inbox</Typography>
+          <Typography variant="caption" color="text.secondary">
+            Showing top {limit} unread notifications based on priority rules.
+          </Typography>
+        </Box>
+        
+        <Box sx={{ width: 150 }}>
+          <Slider
+            value={limit}
+            onChange={(_, val) => setLimit(val as number)}
+            step={5}
+            marks
+            min={5}
+            max={20}
+            size="small"
+            valueLabelDisplay="auto"
+          />
+        </Box>
       </Box>
 
-      {priorityNotifications.length === 0 ? (
-        <Typography color="text.secondary" sx={{ textAlign: 'center', mt: 5 }}>
-          You're all caught up! No high-priority unread notifications.
-        </Typography>
-      ) : priorityNotifications.map((notif, index) => (
-        <Badge 
-          key={notif.ID} 
-          badgeContent={`#${index + 1}`}
-          color="error"
-          sx={{ width: '100%', mb: 2, display: 'block' }}
-        >
-          <Card 
-            variant="elevation" 
-            elevation={3}
-            onClick={() => {
-              markAsRead(notif.ID);
-              // Optimistically remove from priority inbox on read
-              setPriorityNotifications(prev => prev.filter(n => n.ID !== notif.ID));
-            }}
-            sx={{ 
-              cursor: 'pointer',
-              bgcolor: '#fffbf0',
-              borderLeft: '4px solid #ff9800',
-              transition: 'transform 0.2s',
-              '&:hover': { transform: 'scale(1.02)' }
-            }}
-          >
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                  {notif.Message}
-                </Typography>
-                <Chip size="small" label={notif.Type} color={getChipColor(notif.Type) as any} />
+      {/* Messages Area */}
+      <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 0, pb: 4 }}>
+        {priorityNotifications.length === 0 ? (
+          <Typography color="text.secondary" sx={{ p: 3, textAlign: 'center' }}>
+            You're all caught up! No high-priority unread notifications.
+          </Typography>
+        ) : (
+          priorityNotifications.map((notif) => {
+            return (
+              <Box 
+                key={notif.ID}
+                onClick={() => {
+                  markAsRead(notif.ID);
+                  setPriorityNotifications(prev => prev.filter(n => n.ID !== notif.ID));
+                }}
+                sx={{ 
+                  display: 'flex', 
+                  py: 1.5, 
+                  px: 3,
+                  cursor: 'pointer',
+                  bgcolor: '#fffbf0', // Slight yellow tint for priority
+                  '&:hover': { bgcolor: '#fcf6e3' }
+                }}
+              >
+                <Avatar {...getAvatarProps(notif.Type)} variant="rounded" sx={{ width: 36, height: 36, mt: 0.5, ...getAvatarProps(notif.Type).sx }} />
+                <Box sx={{ ml: 2, flexGrow: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'baseline' }}>
+                    <Typography sx={{ fontWeight: 'bold', fontSize: 15, mr: 1, color: '#1d1c1d' }}>
+                      {notif.Type} Bot <Typography component="span" sx={{ fontSize: 11, ml: 0.5, bgcolor: '#e01e5a', color: '#fff', px: 0.6, py: 0.2, borderRadius: 1 }}>URGENT</Typography>
+                    </Typography>
+                    <Typography sx={{ fontSize: 12, color: '#616061' }}>
+                      {new Date(notif.Timestamp.replace(' ', 'T')).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    </Typography>
+                  </Box>
+                  <Typography sx={{ fontSize: 15, color: '#1d1c1d', mt: 0.3 }}>
+                    {notif.Message}
+                  </Typography>
+                </Box>
               </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                {new Date(notif.Timestamp.replace(' ', 'T')).toLocaleString()}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Badge>
-      ))}
-    </Container>
+            );
+          })
+        )}
+      </Box>
+    </Box>
   );
 }
